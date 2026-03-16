@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoVal — Car Price Estimator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #1e1e1e;
+    --accent: #e8ff47;
+    --accent-dim: #c8df1f;
+    --text: #f0f0f0;
+    --muted: #555;
+    --error: #ff4747;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(232,255,71,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 10%, rgba(232,255,71,0.03) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .header {
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 80px);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 40px;
+    animation: fadeUp 0.6s 0.15s ease both;
+  }
+
+  .fields {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .field:nth-child(1) { animation-delay: 0.2s; }
+  .field:nth-child(2) { animation-delay: 0.28s; }
+  .field:nth-child(3) { animation-delay: 0.36s; }
+  .field:nth-child(4) { animation-delay: 0.44s; }
+  .field:nth-child(5) { animation-delay: 0.52s; }
+
+  label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .label-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.2s;
+  }
+
+  .label-unit {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #333;
+    letter-spacing: 0.05em;
+  }
+
+  .input-wrap { position: relative; }
+
+  input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 400;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  .field:focus-within .label-name { color: var(--accent); }
+
+  input[type="number"].error {
+    border-color: var(--error);
+    box-shadow: 0 0 0 1px var(--error);
+  }
+
+  .err-msg {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--error);
+    letter-spacing: 0.05em;
+    min-height: 14px;
+    display: block;
+    margin-top: -4px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 32px 0;
+  }
+
+  button {
+    width: 100%;
+    background: var(--accent);
+    color: #0a0a0a;
+    border: none;
+    border-radius: 2px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.1em;
+    padding: 16px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  button:hover { background: var(--accent-dim); }
+  button:active { transform: scale(0.99); }
+
+  button .btn-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  button.loading .btn-text { opacity: 0; }
+
+  .spinner {
+    display: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: #0a0a0a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    position: absolute;
+  }
+
+  button.loading .spinner { display: block; }
+
+  .result {
+    margin-top: 28px;
+    padding: 28px;
+    background: rgba(232,255,71,0.04);
+    border: 1px solid rgba(232,255,71,0.15);
+    border-radius: 2px;
+    display: none;
+  }
+
+  .result.visible {
+    display: block;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .result-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .result-price {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 8vw, 64px);
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .result-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .chart-section {
+    margin-top: 20px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background: var(--surface);
+    overflow: hidden;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .chart-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .chart-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .chart-body { width: 100%; }
+
+  .chart-body img {
+    width: 100%;
+    display: block;
+    object-fit: contain;
+    max-height: 500px;
+  }
+
+  .chart-caption {
+    padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  .footer {
+    margin-top: 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #2a2a2a;
+    letter-spacing: 0.1em;
+    text-align: center;
+    animation: fadeUp 0.6s 0.6s ease both;
+    opacity: 0;
+    animation-fill-mode: both;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+
+  thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 9px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  td {
+    padding: 10px 14px;
+    color: var(--muted);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    white-space: nowrap;
+  }
+
+  tbody tr:hover td {
+    background: rgba(232,255,71,0.03);
+    color: var(--text);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .toggle-wrap {
+    display: flex;
+    gap: 4px;
+  }
+
+  .toggle-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 5px 12px;
+    cursor: pointer;
+    width: auto;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  .toggle-btn:hover { color: var(--text); border-color: #333; transform: none; }
+  .toggle-btn:active { transform: none; }
+
+  .toggle-btn.active {
+    color: #0a0a0a;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* highlight dropped columns */
+  .col-dropped {
+    color: #ff4747 !important;
+    text-decoration: line-through;
+    opacity: 0.5;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="tag">ML Prediction</div>
+    <h1>AUTO<span>PREDICTION</span><br>(LINEAR<span>REGRESSION)</span></h1>
+    <p class="subtitle">Введите параметры автомобиля — модель рассчитает рыночную цену</p>
+  </div>
+
+  <div class="card">
+    <div class="fields">
+
+      <div class="field">
+        <label>
+          <span class="label-name">Engine Size</span>
+          <span class="label-unit">cubic cm</span>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="enginesize" placeholder="130" min="0" step="any">
+        </div>
+        <span class="err-msg" id="err-enginesize"></span>
+      </div>
+
+      <div class="field">
+        <label>
+          <span class="label-name">Horsepower</span>
+          <span class="label-unit">hp</span>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="horsepower" placeholder="110" min="0" step="any">
+        </div>
+        <span class="err-msg" id="err-horsepower"></span>
+      </div>
+
+      <div class="field">
+        <label>
+          <span class="label-name">Curb Weight</span>
+          <span class="label-unit">lbs</span>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="curbweight" placeholder="2548" min="0" step="any">
+        </div>
+        <span class="err-msg" id="err-curbweight"></span>
+      </div>
+
+      <div class="field">
+        <label>
+          <span class="label-name">Car Width</span>
+          <span class="label-unit">inches</span>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="carwidth" placeholder="65.2" min="0" step="any">
+        </div>
+        <span class="err-msg" id="err-carwidth"></span>
+      </div>
+
+      <div class="field">
+        <label>
+          <span class="label-name">Highway MPG</span>
+          <span class="label-unit">miles/gal</span>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="highwaympg" placeholder="30" min="0" step="any">
+        </div>
+        <span class="err-msg" id="err-highwaympg"></span>
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <button id="predict-btn" onclick="predict()">
+      <div class="btn-inner">
+        <span class="btn-text">Calculate Price</span>
+        <div class="spinner"></div>
+      </div>
+    </button>
+
+    <div class="result" id="result">
+      <div class="result-label">// estimated price</div>
+      <div class="result-price" id="result-price">$0</div>
+      <div class="result-note" id="result-note">Предсказание модели на основе введённых параметров</div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-header">
+      <span class="chart-title">// model graph</span>
+    </div>
+    <div class="chart-body">
+      <img src="image.png" alt="Model graph">
+    </div>
+    <div class="chart-caption">
+      MAE: 2680.2574005980628 <br>
+      Accuracy: 0.8693860324317422
+    </div>
+  </div>
+
+  <div class="chart-section" style="margin-top: 20px;">
+    <div class="chart-header" style="display:flex; align-items:center; justify-content:space-between;">
+      <span class="chart-title">// dataset</span>
+      <div class="toggle-wrap">
+        <button class="toggle-btn active" id="btn-before" onclick="showTable('before')">До очистки</button>
+        <button class="toggle-btn" id="btn-after" onclick="showTable('after')">После очистки</button>
+      </div>
+    </div>
+    <div style="overflow-x: auto;">
+      <table id="table-before">
+        <thead>
+          <tr>
+            <th>car_ID</th><th>symboling</th><th>CarName</th><th>fueltype</th>
+            <th>aspiration</th><th>doornumber</th><th>carbody</th><th>drivewheel</th>
+            <th>enginelocation</th><th>wheelbase</th><th>carlength</th><th>carwidth</th>
+            <th>carheight</th><th>curbweight</th><th>enginetype</th><th>cylindernumber</th>
+            <th>enginesize</th><th>fuelsystem</th><th>boreratio</th><th>stroke</th>
+            <th>compressionratio</th><th>horsepower</th><th>peakrpm</th><th>citympg</th>
+            <th>highwaympg</th><th>price</th>
+          </tr>
+        </thead>
+        <tbody id="body-before"></tbody>
+      </table>
+      <table id="table-after" style="display:none;">
+        <thead>
+          <tr>
+            <th>fueltype</th><th>aspiration</th><th>carbody</th><th>drivewheel</th>
+            <th>wheelbase</th><th>carlength</th><th>carwidth</th><th>carheight</th>
+            <th>curbweight</th><th>enginesize</th><th>boreratio</th><th>stroke</th>
+            <th>compressionratio</th><th>horsepower</th><th>peakrpm</th><th>citympg</th>
+            <th>highwaympg</th><th>price</th>
+          </tr>
+        </thead>
+        <tbody id="body-after"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">AUTOPREDICTION · ML-POWERED PRICING ENGINE · 2025</div>
+</div>
+
+<script>
+  const fields = ['enginesize', 'horsepower', 'curbweight', 'carwidth', 'highwaympg'];
+
+  function validate() {
+    let valid = true;
+    fields.forEach(id => {
+      const input = document.getElementById(id);
+      const err = document.getElementById('err-' + id);
+      const val = input.value.trim();
+      if (val === '' || isNaN(parseFloat(val)) || parseFloat(val) < 0) {
+        input.classList.add('error');
+        err.textContent = 'Введите корректное число';
+        valid = false;
+      } else {
+        input.classList.remove('error');
+        err.textContent = '';
+      }
+    });
+    return valid;
+  }
+
+  fields.forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      const input = document.getElementById(id);
+      const err = document.getElementById('err-' + id);
+      if (input.classList.contains('error')) {
+        input.classList.remove('error');
+        err.textContent = '';
+      }
+    });
+  });
+
+  async function predict() {
+    if (!validate()) return;
+
+    const btn = document.getElementById('predict-btn');
+    const result = document.getElementById('result');
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    result.classList.remove('visible');
+
+    const data = {};
+    fields.forEach(id => data[id] = parseFloat(document.getElementById(id).value));
+
+    try {
+      const response = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await response.json();
+      showResult(json.price);
+    } catch (e) {
+      showError('Ошибка соединения с сервером');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  function showResult(price) {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', maximumFractionDigits: 0
+    }).format(price);
+
+    document.getElementById('result-price').textContent = formatted;
+    document.getElementById('result-note').textContent = 'Предсказание модели на основе введённых параметров';
+
+    const result = document.getElementById('result');
+    result.classList.remove('visible');
+    void result.offsetHeight;
+    result.classList.add('visible');
+  }
+
+  function showError(msg) {
+    document.getElementById('result-price').textContent = 'Ошибка';
+    document.getElementById('result-note').textContent = msg;
+    const result = document.getElementById('result');
+    result.classList.remove('visible');
+    void result.offsetHeight;
+    result.classList.add('visible');
+  }
+  // Toggle tables
+  function showTable(which) {
+    document.getElementById('table-before').style.display = which === 'before' ? '' : 'none';
+    document.getElementById('table-after').style.display  = which === 'after'  ? '' : 'none';
+    document.getElementById('btn-before').classList.toggle('active', which === 'before');
+    document.getElementById('btn-after').classList.toggle('active',  which === 'after');
+  }
+
+  // Dropped column indices in "before" table: 0,1,2,5,14,15,8,17
+  const droppedCols = new Set([0,1,2,5,8,14,15,17]);
+
+  // Full dataset (all 26 cols): car_ID,symboling,CarName,fueltype,aspiration,doornumber,
+  // carbody,drivewheel,enginelocation,wheelbase,carlength,carwidth,carheight,curbweight,
+  // enginetype,cylindernumber,enginesize,fuelsystem,boreratio,stroke,compressionratio,
+  // horsepower,peakrpm,citympg,highwaympg,price
+  const datasetFull = [
+    [1,3,"alfa-romero giulia","gas","std","two","convertible","rwd","front",88.6,168.8,64.1,48.8,2548,"dohc","four",130,"mpfi",3.47,2.68,9,111,5000,21,27,13495],
+    [2,3,"alfa-romero stelvio","gas","std","two","convertible","rwd","front",88.6,168.8,64.1,48.8,2548,"dohc","four",130,"mpfi",3.47,2.68,9,111,5000,21,27,16500],
+    [3,1,"alfa-romero Quadrifoglio","gas","std","two","hatchback","rwd","front",94.5,171.2,65.5,52.4,2823,"ohcv","six",152,"mpfi",2.68,3.47,9,154,5000,19,26,16500],
+    [4,2,"audi 100 ls","gas","std","four","sedan","fwd","front",99.8,176.6,66.2,54.3,2337,"ohc","four",109,"mpfi",3.19,3.4,10,102,5500,24,30,13950],
+    [5,2,"audi 100ls","gas","std","four","sedan","4wd","front",99.4,176.6,66.4,54.3,2824,"ohc","five",136,"mpfi",3.19,3.4,8,115,5500,18,22,17450],
+    [6,2,"audi fox","gas","std","two","sedan","fwd","front",99.8,177.3,66.3,53.1,2507,"ohc","five",136,"mpfi",3.19,3.4,8.5,110,5500,19,25,15250],
+    [7,1,"audi 100ls","gas","std","four","sedan","fwd","front",105.8,192.7,71.4,55.7,2844,"ohc","five",136,"mpfi",3.19,3.4,8.5,110,5500,19,25,17710],
+    [8,1,"audi 5000","gas","std","four","wagon","fwd","front",105.8,192.7,71.4,55.7,2954,"ohc","five",136,"mpfi",3.19,3.4,8.5,110,5500,19,25,18920],
+    [9,1,"audi 4000","gas","turbo","four","sedan","fwd","front",105.8,192.7,71.4,55.9,3086,"ohc","five",131,"mpfi",3.13,3.4,8.3,140,5500,17,20,23875],
+    [10,0,"audi 5000s (diesel)","gas","turbo","two","hatchback","4wd","front",99.5,178.2,67.9,52,3053,"ohc","five",131,"mpfi",3.13,3.4,7,160,5500,16,22,17859],
+    [11,2,"bmw 320i","gas","std","two","sedan","rwd","front",101.2,176.8,64.8,54.3,2395,"ohc","four",108,"mpfi",3.5,2.8,8.8,101,5800,23,29,16430],
+    [12,0,"bmw 320i","gas","std","four","sedan","rwd","front",101.2,176.8,64.8,54.3,2395,"ohc","four",108,"mpfi",3.5,2.8,8.8,101,5800,23,29,16925],
+    [13,0,"bmw x1","gas","std","two","sedan","rwd","front",101.2,176.8,64.8,54.3,2710,"ohc","six",164,"mpfi",3.31,3.19,9,121,4250,21,28,20970],
+    [14,0,"bmw x3","gas","std","four","sedan","rwd","front",101.2,176.8,64.8,54.3,2765,"ohc","six",164,"mpfi",3.31,3.19,9,121,4250,21,28,21105],
+    [15,1,"bmw z4","gas","std","four","sedan","rwd","front",103.5,189,66.9,55.7,3055,"ohc","six",164,"mpfi",3.31,3.19,9,121,4250,20,25,24565],
+    [16,0,"bmw x4","gas","std","four","sedan","rwd","front",103.5,189,66.9,55.7,3230,"ohc","six",209,"mpfi",3.62,3.39,8,182,5400,16,22,30760],
+    [17,0,"bmw x5","gas","std","two","sedan","rwd","front",103.5,193.8,67.9,53.7,3380,"ohc","six",209,"mpfi",3.62,3.39,8,182,5400,16,22,41315],
+    [18,0,"bmw x3","gas","std","four","sedan","rwd","front",110,197,70.9,56.3,3505,"ohc","six",209,"mpfi",3.62,3.39,8,182,5400,15,20,36880],
+    [23,1,"dodge challenger se","gas","std","two","hatchback","fwd","front",93.7,157.3,63.8,50.8,1876,"ohc","four",90,"2bbl",2.97,3.23,9.4,68,5500,31,38,6377],
+    [24,1,"dodge d200","gas","turbo","two","hatchback","fwd","front",93.7,157.3,63.8,50.8,2128,"ohc","four",98,"mpfi",3.03,3.39,7.6,102,5500,24,30,7957],
+    [25,1,"dodge monaco (sw)","gas","std","four","hatchback","fwd","front",93.7,157.3,63.8,50.6,1967,"ohc","four",90,"2bbl",2.97,3.23,9.4,68,5500,31,38,6229],
+  
+  ];
+
+  // Cleaned dataset (dropped cols removed)
+  const droppedColsArr = [0,1,2,5,8,14,15,17];
+  const datasetClean = datasetFull.map(row =>
+    row.filter((_, i) => !droppedColsArr.includes(i))
+  );
+
+  // Render "before" table with dropped cols highlighted
+  const bodyBefore = document.getElementById('body-before');
+  datasetFull.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = row.map((cell, i) =>
+      `<td class="${droppedCols.has(i) ? 'col-dropped' : ''}">${cell}</td>`
+    ).join('');
+    bodyBefore.appendChild(tr);
+  });
+
+  // Render "after" table
+  const bodyAfter = document.getElementById('body-after');
+  datasetClean.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = row.map(cell => `<td>${cell}</td>`).join('');
+    bodyAfter.appendChild(tr);
+  });
+</script>
+</body>
+</html>
